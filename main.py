@@ -93,7 +93,6 @@ class StatusUpdateRequest(BaseModel):
 
 def authenticate_user(x_session_token: str = Header(...)):
     for user_id, user_data in users.items():
-        return user_id
         if user_data["session_token"] == x_session_token:
             return user_id
     raise HTTPException(status_code=401, detail="Invalid session token")
@@ -119,6 +118,7 @@ def create_subtask(subtask: CreateSubTaskRequest, user_id: uuid.UUID = Depends(a
     subtask_obj = {**subtask.dict(), "id": subtask_id, "user_id": user_id, "status": Status.PENDING, "progress_percentage": 0}
     subtasks.setdefault(subtask.task_id, []).append(subtask_obj)
     tasks[subtask.task_id]['progress_percentage'] = calculate_progress(subtask.task_id)
+    tasks[subtask.task_id]['status'] = Status.PENDING
     return {"subtask_id": subtask_id, **subtask_obj}
 
 @app.get("/tasks")
@@ -136,7 +136,13 @@ def update_task_status(task_id: uuid.UUID, update: StatusUpdateRequest, user_id:
     if task_id not in tasks or tasks[task_id]['user_id'] != user_id:
         raise HTTPException(status_code=404, detail="Task not found")
     tasks[task_id]['status'] = update.status
-    tasks[task_id]['progress_percentage'] = calculate_progress(task_id)
+    if update.status == Status.COMPLETE:
+        tasks[task_id]['progress_percentage'] = 100
+        for sub in subtasks[task_id]:
+            if sub['id'] == subtask_id:
+                sub['status'] = update.status
+                if update.status == Status.COMPLETE:
+                    sub['progress_percentage'] = 100
     return {"message": "Task status updated successfully"}
 
 @app.patch("/tasks/{task_id}/subtasks/{subtask_id}/status")
@@ -146,6 +152,8 @@ def update_sub_task_status(task_id: uuid.UUID, subtask_id: uuid.UUID, update: St
     for sub in subtasks[task_id]:
         if sub['id'] == subtask_id:
             sub['status'] = update.status
+            if update.status == Status.COMPLETE:
+                sub['progress_percentage'] = 100
     tasks[task_id]['progress_percentage'] = calculate_progress(task_id)
     return {"message": "Subtask status updated successfully"}
 
