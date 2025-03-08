@@ -139,9 +139,8 @@ def update_task_status(task_id: uuid.UUID, update: StatusUpdateRequest, user_id:
     if update.status == Status.COMPLETE:
         tasks[task_id]['progress_percentage'] = 100
         for sub in subtasks[task_id]:
-            if update.status == Status.COMPLETE:
-                sub['status'] = Status.COMPLETE
-                sub['progress_percentage'] = 100
+            sub['status'] = Status.COMPLETE
+            sub['progress_percentage'] = 100
     return {"message": "Task status updated successfully"}
 
 @app.patch("/tasks/{task_id}/subtasks/{subtask_id}/status")
